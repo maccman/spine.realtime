@@ -4,24 +4,26 @@ $ = jQuery
 
 class PusherHandler extends Spine.Module
   @include Spine.Log
-  logPrefix: '(Pusher)'
+  logPrefix: "(Pusher)"
   
   constructor: (@options = {}) ->
     @options.key or= $('meta[name=pusher-key]').attr('content')
     
     @pusher = new Pusher(@options.key, @options)
-
+    
     $.ajaxSetup
       beforeSend: (xhr) =>
         xhr.setRequestHeader 'X-Session-ID', @pusher.connection.socket_id
-
+    
     @channel = @pusher.subscribe 'observer'
     @channel.bind_all @processWithoutAjax
-  
+    
   process: (type, msg) =>
     @log 'process:', type, msg
     
-    klass = eval(msg.class)
+    klass = window[msg.class]
+    throw 'unknown class' unless klass
+    
     switch type
       when 'create'
         klass.create msg.record unless klass.exists(msg.record.id)
@@ -31,10 +33,10 @@ class PusherHandler extends Spine.Module
         klass.destroy msg.id
       else
         throw 'Unknown type:' + type
-      
+        
   processWithoutAjax: =>
     args = arguments
     Spine.Ajax.disable =>
       @process(args...)
-    
+  
 $ -> new PusherHandler
